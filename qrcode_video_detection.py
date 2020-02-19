@@ -2,6 +2,10 @@ import numpy as np
 import cv2
 import math
 import pyzbar.pyzbar as pyzbar
+import json
+
+#from storage_utility import register_qr
+#from storage_utility import report
 
 QR_OR_NORTH = 1
 QR_OR_EAST = 2
@@ -26,7 +30,7 @@ def calculate_distance(p1, p2):
 #p1, p2 - medians, p3 - top point
 def calculate_perpendicular_distance(p1, p2, p3):
 
-    print(p1, p2, p3)
+    #print(p1, p2, p3)
 
     A = -((p2[1] - p1[1]) / (p2[0] - p1[0]))
     B = 1.0
@@ -324,9 +328,9 @@ def process_frame(frame):
     cv2.drawContours(img, [central_points[right]], 0, (255, 0, 0), 2)
     cv2.drawContours(img, [central_points[bottom]], 0, (0, 0, 255), 2)
 
-    print(orientation)
-    print(perp_dist)
-    print(slope)
+    #print(orientation)
+    #print(perp_dist)
+    #print(slope)
 
     warped = geometrical_transformation(img, extreme_T, extreme_R, extreme_B, intersection)
 
@@ -345,33 +349,59 @@ def process_frame(frame):
     else:
         return img, None
 
+id_list = []
+class_dict = {}
+
+def register_qr(data):
+    if data['id'] not in id_list:
+        id_list.append(data['id'])
+        product_class = data['class']
+        try:
+            temp = class_dict[product_class]
+            temp.append(data)
+            class_dict[product_class] = temp
+        except KeyError:
+            class_dict[product_class] = [data]
+
+
+def report():
+    print("QR_Code report:")
+    for product_class in class_dict.keys():
+        print(product_class, class_dict[product_class])
+
 def main():
 
-    cap = cv2.VideoCapture("00000.MTS")
-    #cap = cv2.VideoCapture(0)
-    font = cv2.FONT_HERSHEY_PLAIN
+    #cap = cv2.VideoCapture("test_data/00003.MTS")
+    cap = cv2.VideoCapture(0)
 
-    while True:
-        retval, frame = cap.read()
+    try:
+        while True:
+            retval, frame = cap.read()
 
-        img, warped = process_frame(frame)
+            img, warped = process_frame(frame)
 
-        #if img is None:
-            #continue
+            #if img is None:
+                #continue
 
-        cv2.imshow("Frame", img)
-        if warped is not None:
-            cv2.imshow("Warped", warped)
+            cv2.imshow("Frame", img)
+            if warped is not None:
+                cv2.imshow("Warped", warped)
 
-            decodedObjects = pyzbar.decode(warped)
-            if not decodedObjects:
-                continue
-            for obj in decodedObjects:
-                print("Data", obj.data)
+                decodedObjects = pyzbar.decode(warped)
+                if not decodedObjects:
+                    continue
+                for obj in decodedObjects:
+                    if obj.data:
+                        print(obj.data)
+                        byte_data = obj.data.decode('utf8').replace("'", '"')
+                        json_data = json.loads(byte_data)
+                        print(json_data)
+                        register_qr(json_data)
 
-        cv2.waitKey(1)
+            cv2.waitKey(1)
 
-
+    except KeyboardInterrupt:
+        report()
 
 if __name__ == '__main__':
     main()
