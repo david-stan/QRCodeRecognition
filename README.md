@@ -8,3 +8,6 @@ Install libraries (virtualenv is optional):
 
 ## Starting
   - `> python qrcode_video_detection.py`
+  
+## Using
+  - Show QR code on your webcam.
